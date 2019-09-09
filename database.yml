@@ -1,0 +1,12 @@
+---
+development:
+  dialect: "sqlite3"
+  database: /home/patrick/Projects/src/github.com/patrick/awesome_spreadsheet_api_awesome_spreadsheet_api_development.sqlite
+
+test:
+  dialect: "sqlite3"
+  database: /home/patrick/Projects/src/github.com/patrick/awesome_spreadsheet_api_awesome_spreadsheet_api_test.sqlite
+
+production:
+  dialect: "sqlite3"
+  database: /home/patrick/Projects/src/github.com/patrick/awesome_spreadsheet_api_awesome_spreadsheet_api_production.sqlite
