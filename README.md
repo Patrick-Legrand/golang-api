@@ -1,35 +1,30 @@
-# Welcome to Buffalo!
+# API REST en Golang
 
-Thank you for choosing Buffalo for your web development needs.
+Utilisation de Golang avec le framework web Buffalo.
+Ici on utilise un back sous la forme d'une API.
+L'authentification ce fait au travers de Tokens (JWT) et la durabililté des sessions est entretenu par un serveur REDIS, enregistrant l'etat de chaque utilisateur present sur le site
+La base de données est en SQLite3 pour limiter la concentration des données sur un seul endroit (serveur SQL commun à tous les sites). Egalement, cela evite les attaques type nmap/recherche de serveur SQL vu qu'aucun acces à la base n'est possible depuis l'exterieur
 
-## Database Setup
+## Authentification
 
-It looks like you chose to set up your application using a database! Fantastic!
+Le JWT est generée avec l'algorithme HS256. Il utilise une clé publique devant être fournit à chaque appel client. Cette clé est générée via openSSH, puis le lien vers le fichier .rem est fournit en parametre à l'application BuffaloGO par le biais de la variable d'environnement *JWT_PUBLIC_KEY*. La récupération de cette clé dans l'application ce fait via la fonction **getPublicKey** du fichier **auth.go**
 
-The first thing you need to do is open up the "database.yml" file and edit it to use the correct usernames, passwords, hosts, etc... that are appropriate for your environment.
+Les claims de base de la JWT contiennent :
 
-You will also need to make sure that **you** start/install the database of your choice. Buffalo **won't** install and start it for you.
++ sub: Subject -> UID de l'utilisateur
++ nbf: Not Before -> Timestamp de génération du token, empechant la validation de celui-ci si l'appel est fait avant ce ts
++ iat: Initialised At -> Timestamp d'initialisation du token
++ exp: Expiraton -> Timestamp donnant l'heure d'expiration du token
 
-### Create Your Databases
+Lorsque le client ce connecte, le JWT est générée et la session est sauvegardé dans le serveur REDIS. A chaque appel de l'API, une demande est faite à ce serveur pour s'assurer que la connexion n'est pas frauduleuse
 
-Ok, so you've edited the "database.yml" file and started your database, now Buffalo can create the databases in that file for you:
+A chaque appel du client, un nouveau JWT est généré pour éviter qu'il ce fasse Timeout. Ce nouveau token est envoyé dans le Header de la requete avec **Set-Authorization**, celui-ci doit être récupérer par le client et renvoyer avec la prochaine requete sous peine de ce faire rejeter par le serveur.
 
-	$ buffalo pop create -a
+## Création du projet
 
-## Starting the Application
+Il nous faut :
 
-Buffalo ships with a command that will watch your application and automatically rebuild the Go binary and any assets for you. To do that run the "buffalo dev" command:
-
-	$ buffalo dev
-
-If you point your browser to [http://127.0.0.1:3000](http://127.0.0.1:3000) you should see a "Welcome to Buffalo!" page.
-
-**Congratulations!** You now have your Buffalo application up and running.
-
-## What Next?
-
-We recommend you heading over to [http://gobuffalo.io](http://gobuffalo.io) and reviewing all of the great documentation there.
-
-Good luck!
-
-[Powered by Buffalo](http://gobuffalo.io)
++ Le projet Buffalo en structure API
++ Le module de connexion utilisateur de Buffalo pour la création et l'utilisation d'utilisateur
++ Le module JWT de Buffalo pour la génération est l'utilisation des token
++ go-redis pour la communication avec le serveur REDIS
