@@ -1,15 +1,17 @@
 package actions
 
 import (
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/envy"
 	forcessl "github.com/gobuffalo/mw-forcessl"
 	paramlogger "github.com/gobuffalo/mw-paramlogger"
+	"github.com/gobuffalo/x/sessions"
 	"github.com/unrolled/secure"
 
 	"github.com/gobuffalo/buffalo-pop/pop/popmw"
 	contenttype "github.com/gobuffalo/mw-contenttype"
-	"github.com/gobuffalo/x/sessions"
+	tokenauth "github.com/gobuffalo/mw-tokenauth"
 	"github.com/patrick/awesome_spreadsheet_api/models"
 	"github.com/rs/cors"
 )
@@ -43,21 +45,43 @@ func App() *buffalo.App {
 			SessionName: "_awesome_spreadsheet_api_session",
 		})
 
-		// Automatically redirect to SSL
+		// Redirection automatique en SSL
 		app.Use(forceSSL())
 
-		// Log request parameters (filters apply).
+		// Log des parametres envoye par les requettes http
 		app.Use(paramlogger.ParameterLogger)
 
-		// Set the request content type to JSON
+		// Definition du content-type dans le header de chaque requete
 		app.Use(contenttype.Set("application/json"))
 
-		// Wraps each request in a transaction.
-		//  c.Value("tx").(*pop.Connection)
-		// Remove to disable this.
+		// Wraps chaque requete dans une transaction
+		// c.Value("tx").(*pop.Connection)
 		app.Use(popmw.Transaction(models.DB))
 
+		// Utilisation du middleware tokenauth pour
+		// gerer l'authentification par JWT (JSON Web Token).
+		jwtHandler := tokenauth.New(tokenauth.Options{
+			GetKey: func(signingMethod jwt.SigningMethod) (interface{}, error) {
+				// Les requetes reçu doivent avoir un header avec :	Autorization: Bearer <jwt>
+				// La signature de la jwt doit etre genere avec la cle prive
+				return getPublicKey()
+			},
+			SignMethod: jwt.SigningMethodHS256,
+		})
+
+		app.Use(jwtHandler)
+		app.Use(Authorize)
+
 		app.GET("/", HomeHandler)
+
+		app.POST("/signin", AuthCreate)
+		app.DELETE("/signout", AuthDestroy)
+		//app.POST("/users", UsersCreate)
+		// app.GET("/users/new", UsersNew)
+		// app.GET("/signin", AuthNew)
+
+		app.Middleware.Skip(jwtHandler, HomeHandler, AuthCreate)
+		app.Middleware.Skip(Authorize, HomeHandler, AuthCreate, AuthDestroy)
 	}
 
 	return app
